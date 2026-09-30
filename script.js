@@ -1,5 +1,5 @@
 // ⚠️ MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
-const SCRIPT_URL =
+const API_URL =
   "https://script.google.com/macros/s/AKfycbzj3CW4-3yxXXRs30R6yKjlYCtK15NmHj6J3FxwRSAvhntsXQYbF0LB4tLDEV4s7OYxPg/exec";
 
 let members = [];
