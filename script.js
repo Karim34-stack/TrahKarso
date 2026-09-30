@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function loadDataFromSheet() {
   showLoading(true);
 
-  if (!API_URL || API_URL.includes("PASTE_URL")) {
+  if (!API_URL || API_URL.includes("https://script.google.com/macros/s/AKfycbzJI3aL0yPOn5SSiTVtqPtzJWSNEI3LEZ7GYc9xM_iBcgM5QWw6TitT_iCa15O-CZ0c8g/exec")) {
     alert("Silakan masukkan URL Deployment Apps Script pada file script.js!");
     showLoading(false);
     return;
