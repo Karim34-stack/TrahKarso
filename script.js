@@ -1,553 +1,333 @@
-// ⚠️ MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbzj3CW4-3yxXXRs30R6yKjlYCtK15NmHj6J3FxwRSAvhntsXQYbF0LB4tLDEV4s7OYxPg/exec";
+// Data awal silsilah keluarga (Garis Keturunan Asli)
+let familyData = [
+  {
+    id: 1,
+    nama: "Kakek H. Ahmad",
+    gender: "L",
+    parentId: null,
+    phone: "081234567890",
+    photo: "uploads/default.jpg",
+    bio: "Pendiri keluarga besar. Suka berkebun dan berorganisasi.",
+    pasangan: [
+      { nama: "Nenek Hj. Siti", phone: "081234567891", bio: "Istri pertama H. Ahmad" }
+    ]
+  },
+  {
+    id: 2,
+    nama: "Budi Santoso",
+    gender: "L",
+    parentId: 1,
+    phone: "081298765432",
+    photo: "uploads/default.jpg",
+    bio: "Anak pertama Kakek Ahmad. Bekerja sebagai wirausaha.",
+    pasangan: [
+      { nama: "Rina Indriani", phone: "081298765433", bio: "Istri Budi Santoso" }
+    ]
+  },
+  {
+    id: 3,
+    nama: "Siti Rahma",
+    gender: "P",
+    parentId: 1,
+    phone: "081388887777",
+    photo: "uploads/default.jpg",
+    bio: "Anak kedua Kakek Ahmad. Berprofesi sebagai guru.",
+    pasangan: [
+      { nama: "Hendra Wijaya", phone: "081388887778", bio: "Suami Siti Rahma" }
+    ]
+  },
+  {
+    id: 4,
+    nama: "Andi Santoso",
+    gender: "L",
+    parentId: 2,
+    phone: "081311223344",
+    photo: "uploads/default.jpg",
+    bio: "Cucu pertama dari Budi Santoso.",
+    pasangan: []
+  }
+];
 
-let members = [];
-let adminToken = sessionStorage.getItem("silsilah_admin_token") || "";
-let selectedId = null;
-let currentPhotoData = "";
+let isAdmin = false;
+const ADMIN_PIN = "1234";
 
-const $ = (id) => document.getElementById(id);
-
+// Inisialisasi saat halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
-  bindEvents();
-  updateAdminUI();
-  loadData();
+  renderTree();
 });
 
-function bindEvents() {
-  $("btnRefresh").onclick = loadData;
-  $("btnLogin").onclick = () => openModal("loginModal");
-  $("btnLogout").onclick = logout;
-  $("btnAdd").onclick = () => openForm();
-  $("searchInput").oninput = render;
-  $("generationFilter").onchange = render;
-  $("genderFilter").onchange = render;
-  $("personForm").onsubmit = submitPerson;
-  $("loginForm").onsubmit = submitLogin;
-  $("fPhoto").onchange = previewPhoto;
+// Render Pohon Silsilah
+function renderTree() {
+  const container = document.getElementById("familyTree");
+  container.innerHTML = "";
 
-  document.querySelectorAll("[data-close]").forEach((b) => {
-    b.onclick = () => closeModal(b.dataset.close);
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape")
-      document
-        .querySelectorAll(".modal:not(.hidden)")
-        .forEach((m) => m.classList.add("hidden"));
-  });
-}
-
-function gas(fn, ...args) {
-  return new Promise((resolve, reject) => {
-    if (!window.google || !google.script || !google.script.run) {
-      reject(
-        new Error(
-          "API Apps Script tidak tersedia. Pastikan website dibuka dari Web App Apps Script.",
-        ),
-      );
-      return;
-    }
-    google.script.run
-      .withSuccessHandler(resolve)
-      .withFailureHandler((err) => {
-        reject(new Error(err && err.message ? err.message : String(err)));
-      })
-      [fn](...args);
-  });
-}
-
-async function loadData() {
-  setStatus("Memuat data...");
-  try {
-    members = await gas("getData");
-    normalizeMembers();
-    buildGenerationFilter();
-    render();
-    setStatus("Data berhasil dimuat");
-  } catch (e) {
-    setStatus("Gagal memuat: " + e.message);
-    toast(e.message);
-  }
-}
-
-function normalizeMembers() {
-  members = (members || []).map((m) => ({
-    ...m,
-    id: String(m.id || ""),
-    nama: String(m.nama || ""),
-    ayah: String(m.ayah || ""),
-    ibu: String(m.ibu || ""),
-    pasangan: String(m.pasangan || ""),
-    jenisKelamin: String(m.jenisKelamin || ""),
-    tanggalLahir: String(m.tanggalLahir || ""),
-    hubungan: String(m.hubungan || ""),
-    alamat: String(m.alamat || ""),
-    deskripsi: String(m.deskripsi || ""),
-    foto: String(m.foto || ""),
-    noHp: extractPhone(m.deskripsi),
-  }));
-}
-
-function extractPhone(desc) {
-  const m = String(desc || "").match(/\[HP:([^\]]*)\]/i);
-  return m ? m[1].trim() : "";
-}
-function cleanDescription(desc) {
-  return String(desc || "")
-    .replace(/^\s*\[HP:[^\]]*\]\s*/i, "")
-    .trim();
-}
-
-function buildGenerationFilter() {
-  const sel = $("generationFilter");
-  const old = sel.value;
-  const gens = [
-    ...new Set(members.map(getGeneration).filter((n) => n > 0)),
-  ].sort((a, b) => a - b);
-  sel.innerHTML =
-    '<option value="all">Semua generasi</option>' +
-    gens.map((g) => `<option value="${g}">Generasi ${g}</option>`).join("");
-  if (gens.includes(Number(old))) sel.value = old;
-}
-
-function getGeneration(person) {
-  const memo = new Map();
-  function calc(p, stack = []) {
-    if (!p) return 1;
-    if (memo.has(p.id)) return memo.get(p.id);
-    if (stack.includes(p.id)) return 1;
-    const father = find(p.ayah),
-      mother = find(p.ibu);
-    const parents = [father, mother].filter(Boolean);
-    if (!parents.length) {
-      memo.set(p.id, 1);
-      return 1;
-    }
-    const g = Math.max(...parents.map((x) => calc(x, [...stack, p.id]))) + 1;
-    memo.set(p.id, g);
-    return g;
-  }
-  return calc(person);
-}
-
-function find(id) {
-  return members.find((m) => m.id === String(id));
-}
-function spouseIds(p) {
-  return String(p?.pasangan || "")
-    .split(/[,;\n]+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
-function spousesOf(p) {
-  const ids = new Set(spouseIds(p));
-  members.forEach((x) => {
-    if (spouseIds(x).includes(p.id)) ids.add(x.id);
-  });
-  return [...ids]
-    .map(find)
-    .filter(Boolean)
-    .filter((x) => x.id !== p.id);
-}
-function childrenOf(p) {
-  return members
-    .filter((x) => String(x.ayah) === p.id || String(x.ibu) === p.id)
-    .sort(sortBirth);
-}
-function sortBirth(a, b) {
-  const da = a.tanggalLahir ? new Date(a.tanggalLahir).getTime() : Infinity;
-  const db = b.tanggalLahir ? new Date(b.tanggalLahir).getTime() : Infinity;
-  return da - db || a.nama.localeCompare(b.nama, "id");
-}
-function roots() {
-  // Akar biologis: anggota yang tidak memiliki ayah/ibu di database.
-  // Pasangan tetap bukan node pohon utama.
-  return members.filter((p) => !find(p.ayah) && !find(p.ibu)).sort(sortBirth);
-}
-
-function render() {
-  const q = $("searchInput").value.trim().toLowerCase();
-  const g = $("generationFilter").value;
-  const gender = $("genderFilter").value;
-
-  let visible = members.filter((p) => {
-    const text = [p.nama, p.hubungan, p.noHp, p.alamat].join(" ").toLowerCase();
-    return (
-      (!q || text.includes(q)) &&
-      (gender === "all" || p.jenisKelamin === gender) &&
-      (g === "all" || getGeneration(p) === Number(g))
-    );
-  });
-
-  $("totalMembers").textContent = members.length;
-  $("shownMembers").textContent = visible.length;
-  $("shownGeneration").textContent = g === "all" ? "Semua" : "Generasi " + g;
-  $("bloodMembers").textContent = members.length;
-
-  const tree = $("tree");
-  if (!members.length) {
-    tree.innerHTML = "";
-    $("emptyState").classList.remove("hidden");
-    return;
-  }
-  $("emptyState").classList.add("hidden");
-
-  // Jika ada pencarian, tampilkan hasil yang cocok sebagai kartu keturunan.
-  if (q || g !== "all" || gender !== "all") {
-    const grouped = {};
-    visible.forEach((p) => {
-      const gen = getGeneration(p);
-      (grouped[gen] ??= []).push(p);
-    });
-    tree.innerHTML = Object.keys(grouped)
-      .sort((a, b) => a - b)
-      .map((gen) => {
-        return `<div class="generation-row"><div class="gen-label">Generasi ${gen}</div>${grouped[gen].map(cardHTML).join("")}</div>`;
-      })
-      .join("");
+  // Cari anggota akar (parentId == null)
+  const roots = familyData.filter(m => m.parentId === null);
+  if (roots.length === 0) {
+    container.innerHTML = "<p>Belum ada data silsilah keluarga.</p>";
     return;
   }
 
-  const rs = roots();
-  tree.innerHTML = rs.map((root) => renderRootBranch(root)).join("");
+  const ul = document.createElement("ul");
+  roots.forEach(root => {
+    ul.appendChild(createTreeNode(root));
+  });
+  container.appendChild(ul);
 }
 
-function renderRootBranch(root) {
-  const levels = [];
-  const seen = new Set();
-  function walk(list, depth) {
-    if (!list.length || depth > 30) return;
-    levels[depth] ??= [];
-    list.forEach((p) => {
-      if (seen.has(p.id)) return;
-      seen.add(p.id);
-      levels[depth].push(p);
+// Rekursif untuk membuat node pohon
+function createTreeNode(member) {
+  const li = document.createElement("li");
+
+  // Admin Actions HTML
+  const adminActionsHTML = isAdmin ? `
+    <div class="admin-card-actions" onclick="event.stopPropagation()">
+      <button class="btn-icon" onclick="openEditModal(${member.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+      <button class="btn-icon danger" onclick="deleteMember(${member.id})" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  ` : '';
+
+  const spouseCountText = member.pasangan && member.pasangan.length > 0 
+    ? `<div class="spouse-count-badge"><i class="fa-solid fa-heart"></i> ${member.pasangan.length} Pasangan</div>` 
+    : '';
+
+  li.innerHTML = `
+    <div class="card" onclick="showDetail(${member.id})">
+      ${adminActionsHTML}
+      <img src="${member.photo}" class="card-img" alt="${member.nama}" onerror="this.src='https://via.placeholder.com/64?text=Foto'"/>
+      <div class="card-name">${member.nama}</div>
+      <div class="card-badge">${member.gender === 'L' ? 'Keturunan (L)' : 'Keturunan (P)'}</div>
+      <div class="card-phone"><i class="fa-solid fa-phone"></i> ${member.phone || '-'}</div>
+      ${spouseCountText}
+    </div>
+  `;
+
+  // Cari anak-anak langsung (keturunan asli)
+  const children = familyData.filter(m => m.parentId === member.id);
+  if (children.length > 0) {
+    const ul = document.createElement("ul");
+    children.forEach(child => {
+      ul.appendChild(createTreeNode(child));
     });
-    const next = list.flatMap(childrenOf);
-    walk(next, depth + 1);
+    li.appendChild(ul);
   }
-  walk([root], 1);
 
-  return levels
-    .map((list, i) => {
-      const gen = i + 1;
-      const html = list.map(cardHTML).join("");
-      return `<div class="generation-row"><div class="gen-label">Generasi ${gen}</div>${html}</div>`;
-    })
-    .join("");
+  return li;
 }
 
-function cardHTML(p) {
-  const photo = p.foto
-    ? `<img src="${escAttr(photoUrl(p.foto))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : "";
-  const avatar = `<div class="avatar" style="${p.foto ? "display:none" : ""}">${p.jenisKelamin === "Perempuan" ? "👩" : "👨"}</div>`;
-  const admin = adminToken
-    ? `<div class="card-actions">
-    <button class="btn ghost" onclick="event.stopPropagation();openForm('${esc(p.id)}')">Edit</button>
-    <button class="btn danger" onclick="event.stopPropagation();removePerson('${esc(p.id)}')">Hapus</button>
-  </div>`
-    : "";
-  return `<article class="member-card clickable" onclick="openDetail('${esc(p.id)}')">
-    <div class="member-photo">${photo}${avatar}</div>
-    <div class="member-name">${esc(p.nama)}</div>
-    <div class="member-meta">${esc(p.hubungan || "")} ${p.tanggalLahir ? "• " + formatDate(p.tanggalLahir) : ""}</div>
-    ${p.noHp ? `<div class="phone">☎ ${esc(p.noHp)}</div>` : ""}
-    ${admin}
-  </article>`;
-}
+// Tampilkan Detail & Breakdown Anggota
+function showDetail(id) {
+  const member = familyData.find(m => m.id === id);
+  if (!member) return;
 
-function openDetail(id) {
-  const p = find(id);
-  if (!p) return;
-  selectedId = id;
-  const sp = spousesOf(p),
-    kids = childrenOf(p);
-  const desc = cleanDescription(p.deskripsi);
-  $("detailContent").innerHTML = `
-    <div class="detail-head">
-      <div class="detail-photo">${p.foto ? `<img src="${escAttr(photoUrl(p.foto))}" onerror="this.outerHTML='<div class=avatar>👤</div>'">` : '<div class="avatar">👤</div>'}</div>
-      <div class="detail-title">
-        <h2>${esc(p.nama)}</h2>
-        <div class="muted">Generasi ${getGeneration(p)} ${p.hubungan ? "• " + esc(p.hubungan) : ""}</div>
-        ${p.noHp ? `<div class="phone">☎ ${esc(p.noHp)}</div>` : ""}
+  document.getElementById("detailName").innerText = member.nama;
+
+  // Render Breakdown Pasangan
+  let pasanganHTML = "<i>Tidak ada data pasangan.</i>";
+  if (member.pasangan && member.pasangan.length > 0) {
+    pasanganHTML = member.pasangan.map((p, idx) => `
+      <div class="spouse-section">
+        <div class="spouse-title">Pasangan ${idx + 1}: ${p.nama}</div>
+        <div><b>No HP:</b> ${p.phone || '-'}</div>
+        <div><b>Biografi:</b> ${p.bio || '-'}</div>
       </div>
-      <div class="detail-actions">
-        ${adminToken ? `<button class="btn primary" onclick="openForm('${esc(p.id)}')">Edit</button><button class="btn danger" onclick="removePerson('${esc(p.id)}')">Hapus</button>` : ""}
-        <button class="btn ghost" onclick="openForm('', '${esc(p.id)}')">＋ Tambah data</button>
+    `).join('');
+  }
+
+  // Render Anak (Keturunan Langsung)
+  const children = familyData.filter(m => m.parentId === member.id);
+  let childrenHTML = "<i>Tidak ada keturunan langsung.</i>";
+  if (children.length > 0) {
+    childrenHTML = "<ul class='detail-sub-list'>" + children.map(c => `<li><b>${c.nama}</b> (${c.gender === 'L' ? 'Laki-laki' : 'Perempuan'})</li>`).join('') + "</ul>";
+  }
+
+  // Render Cucu
+  let grandchildren = [];
+  children.forEach(c => {
+    const gChildren = familyData.filter(m => m.parentId === c.id);
+    grandchildren = grandchildren.concat(gChildren);
+  });
+  let grandChildrenHTML = "<i>Tidak ada cucu.</i>";
+  if (grandchildren.length > 0) {
+    grandChildrenHTML = "<ul class='detail-sub-list'>" + grandchildren.map(gc => `<li><b>${gc.nama}</b></li>`).join('') + "</ul>";
+  }
+
+  const body = document.getElementById("detailBody");
+  body.innerHTML = `
+    <div style="text-align:center; margin-bottom:15px;">
+      <img src="${member.photo}" style="width:90px; height:90px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/90?text=Foto'"/>
+      <h4 style="margin-top:8px;">${member.nama}</h4>
+      <p style="font-size:0.85rem; color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${member.phone || 'Tidak ada No. HP'}</p>
+    </div>
+    
+    <div style="margin-bottom:15px;">
+      <h5 style="margin-bottom:4px;">Biografi:</h5>
+      <p style="font-size:0.9rem; color:#475569;">${member.bio || '-'}</p>
+    </div>
+
+    <hr style="margin:15px 0; border:none; border-top:1px solid var(--border);"/>
+
+    <h5 style="margin-bottom:8px;">Breakdown Pasangan:</h5>
+    ${pasanganHTML}
+
+    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Anak (Keturunan Asli):</h5>
+    ${childrenHTML}
+
+    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Cucu:</h5>
+    ${grandChildrenHTML}
+  `;
+
+  document.getElementById("detailModal").classList.add("active");
+}
+
+// Modal Toggle Functions
+function closeModal(id) {
+  document.getElementById(id).classList.remove("active");
+}
+
+function toggleAdminModal() {
+  if (isAdmin) {
+    isAdmin = false;
+    document.getElementById("adminBtnText").innerText = "Login Admin";
+    alert("Anda telah keluar dari mode Admin.");
+    renderTree();
+  } else {
+    document.getElementById("adminModal").classList.add("active");
+  }
+}
+
+function loginAdmin() {
+  const pin = document.getElementById("adminPin").value;
+  if (pin === ADMIN_PIN) {
+    isAdmin = true;
+    document.getElementById("adminBtnText").innerText = "Logout Admin";
+    closeModal("adminModal");
+    document.getElementById("adminPin").value = "";
+    alert("Login Admin Berhasil! Anda sekarang dapat mengedit dan menghapus data.");
+    renderTree();
+  } else {
+    alert("PIN Admin Salah! (Default: 1234)");
+  }
+}
+
+// Open Modal Add / Edit
+function openAddModal() {
+  document.getElementById("formTitle").innerText = "Tambah Anggota Keluarga";
+  document.getElementById("memberForm").reset();
+  document.getElementById("memberId").value = "";
+  document.getElementById("spousesContainer").innerHTML = "";
+  populateParentDropdown();
+  document.getElementById("formModal").classList.add("active");
+}
+
+function openEditModal(id) {
+  const member = familyData.find(m => m.id === id);
+  if (!member) return;
+
+  document.getElementById("formTitle").innerText = "Edit Anggota Keluarga";
+  document.getElementById("memberId").value = member.id;
+  document.getElementById("fieldName").value = member.nama;
+  document.getElementById("fieldGender").value = member.gender;
+  document.getElementById("fieldPhone").value = member.phone || "";
+  document.getElementById("fieldPhoto").value = member.photo || "";
+  document.getElementById("fieldBio").value = member.bio || "";
+
+  populateParentDropdown(member.id);
+  document.getElementById("fieldParent").value = member.parentId || "";
+
+  // Populate Spouses
+  const container = document.getElementById("spousesContainer");
+  container.innerHTML = "";
+  if (member.pasangan) {
+    member.pasangan.forEach(p => addSpouseField(p.nama, p.phone, p.bio));
+  }
+
+  document.getElementById("formModal").classList.add("active");
+}
+
+// Form Helpers
+function populateParentDropdown(currentId = null) {
+  const select = document.getElementById("fieldParent");
+  select.innerHTML = '<option value="">-- Orang Tua Akar / Utama --</option>';
+  
+  familyData.forEach(m => {
+    if (m.id !== currentId) {
+      select.innerHTML += `<option value="${m.id}">${m.nama}</option>`;
+    }
+  });
+}
+
+function addSpouseField(nama = '', phone = '', bio = '') {
+  const container = document.getElementById("spousesContainer");
+  const div = document.createElement("div");
+  div.className = "spouse-form-box";
+  div.innerHTML = `
+    <button type="button" class="btn-icon danger" style="position:absolute; top:5px; right:5px;" onclick="this.parentElement.remove()">&times;</button>
+    <div class="form-group" style="margin-bottom:6px;">
+      <label>Nama Pasangan</label>
+      <input type="text" class="spouse-nama" value="${nama}" placeholder="Nama Pasangan" required />
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0;">
+        <input type="text" class="spouse-phone" value="${phone}" placeholder="No HP Pasangan" />
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <input type="text" class="spouse-bio" value="${bio}" placeholder="Biografi Pasangan" />
       </div>
     </div>
-    <div class="detail-grid">
-      <section class="detail-section"><h3>Pasangan (${sp.length})</h3>
-        <div class="person-list">${sp.length ? sp.map(miniHTML).join("") : '<span class="muted">Belum ada pasangan tercatat.</span>'}</div>
-      </section>
-      <section class="detail-section"><h3>Anak langsung (${kids.length})</h3>
-        <div class="person-list">${kids.length ? kids.map(miniHTML).join("") : '<span class="muted">Belum ada anak tercatat.</span>'}</div>
-      </section>
-      <section class="detail-section full"><h3>Anak → cucu → keturunan</h3>
-        <div id="descTree">${descendantHTML(p, 0, new Set())}</div>
-      </section>
-      <section class="detail-section"><h3>Orang tua</h3>
-        <div class="person-list">${[find(p.ayah), find(p.ibu)].filter(Boolean).map(miniHTML).join("") || '<span class="muted">Belum tercatat.</span>'}</div>
-      </section>
-      <section class="detail-section"><h3>Informasi</h3>
-        <div class="desc">${esc(p.alamat)}${p.alamat ? "<br>" : ""}${esc(desc)}</div>
-      </section>
-    </div>`;
-  openModal("detailModal");
+  `;
+  container.appendChild(div);
 }
 
-function descendantHTML(p, depth, seen) {
-  if (depth > 12) return "";
-  const kids = childrenOf(p);
-  if (!kids.length)
-    return depth === 0 ? '<span class="muted">Belum ada keturunan.</span>' : "";
-  return `<div style="margin-left:${Math.min(depth * 18, 180)}px;margin-bottom:10px">
-    ${kids
-      .map(
-        (
-          c,
-        ) => `<div class="mini-person" style="display:inline-block;margin:3px;cursor:pointer" onclick="openDetail('${esc(c.id)}')">
-      <strong>${esc(c.nama)}</strong><span>Generasi ${getGeneration(c)}${c.noHp ? " • " + esc(c.noHp) : ""}</span>
-      ${descendantHTML(c, depth + 1, seen)}
-    </div>`,
-      )
-      .join("")}
-  </div>`;
-}
-function miniHTML(p) {
-  return `<div class="mini-person" onclick="openDetail('${esc(p.id)}')" style="cursor:pointer">
-    <strong>${esc(p.nama)}</strong><span>${esc(p.hubungan || "")}${p.tanggalLahir ? " • " + formatDate(p.tanggalLahir) : ""}</span>
-  </div>`;
-}
+// Save Member Function
+function saveMember(e) {
+  e.preventDefault();
 
-function openForm(editId = "", parentId = "") {
-  if (editId && !adminToken) {
-    toast("Login admin diperlukan untuk edit.");
-    return;
-  }
-  selectedId = editId || null;
-  $("formTitle").textContent = editId ? "Edit Anggota" : "Tambah Anggota";
-  $("fId").value = editId || "";
-  fillRelationOptions();
-  if (editId) {
-    const p = find(editId);
-    $("fNama").value = p.nama || "";
-    $("fGender").value = p.jenisKelamin || "";
-    $("fBirth").value = normalizeDateInput(p.tanggalLahir);
-    $("fRelation").value = p.hubungan || "";
-    $("fPhone").value = p.noHp || "";
-    $("fFather").value = p.ayah || "";
-    $("fMother").value = p.ibu || "";
-    const ids = spouseIds(p);
-    [...$("fSpouses").options].forEach(
-      (o) => (o.selected = ids.includes(o.value)),
-    );
-    $("fAddress").value = p.alamat || "";
-    $("fDescription").value = cleanDescription(p.deskripsi);
-    currentPhotoData = p.foto || "";
-    $("photoPreview").innerHTML = p.foto
-      ? `<img src="${escAttr(photoUrl(p.foto))}">`
-      : "";
+  const id = document.getElementById("memberId").value;
+  const nama = document.getElementById("fieldName").value;
+  const gender = document.getElementById("fieldGender").value;
+  const parentId = document.getElementById("fieldParent").value ? parseInt(document.getElementById("fieldParent").value) : null;
+  const phone = document.getElementById("fieldPhone").value;
+  const photo = document.getElementById("fieldPhoto").value || "uploads/default.jpg";
+  const bio = document.getElementById("fieldBio").value;
+
+  // Spouses Gathering
+  const spousesArr = [];
+  document.querySelectorAll(".spouse-form-box").forEach(box => {
+    spousesArr.push({
+      nama: box.querySelector(".spouse-nama").value,
+      phone: box.querySelector(".spouse-phone").value,
+      bio: box.querySelector(".spouse-bio").value
+    });
+  });
+
+  if (id) {
+    // Edit Existing
+    const index = familyData.findIndex(m => m.id === parseInt(id));
+    if (index !== -1) {
+      familyData[index] = { id: parseInt(id), nama, gender, parentId, phone, photo, bio, pasangan: spousesArr };
+    }
   } else {
-    $("personForm").reset();
-    currentPhotoData = "";
-    $("photoPreview").innerHTML = "";
-    if (parentId) {
-      const parent = find(parentId);
-      if (parent) {
-        if (parent.jenisKelamin === "Laki-laki") $("fFather").value = parent.id;
-        else if (parent.jenisKelamin === "Perempuan")
-          $("fMother").value = parent.id;
-      }
+    // Create New
+    const newId = familyData.length > 0 ? Math.max(...familyData.map(m => m.id)) + 1 : 1;
+    familyData.push({ id: newId, nama, gender, parentId, phone, photo, bio, pasangan: spousesArr });
+  }
+
+  closeModal("formModal");
+  renderTree();
+}
+
+// Delete Member Function
+function deleteMember(id) {
+  if (confirm("Apakah Anda yakin ingin menghapus data ini beserta seluruh struktur keturunannya?")) {
+    // Hapus anggota dan keturunannya secara rekursif
+    function removeRecursive(memberId) {
+      const children = familyData.filter(m => m.parentId === memberId);
+      children.forEach(c => removeRecursive(c.id));
+      familyData = familyData.filter(m => m.id !== memberId);
     }
-  }
-  $("formNotice").classList.add("hidden");
-  closeModal("detailModal");
-  openModal("formModal");
-}
-
-function fillRelationOptions() {
-  const opts =
-    '<option value="">- Tidak diketahui -</option>' +
-    members
-      .map((p) => `<option value="${escAttr(p.id)}">${esc(p.nama)}</option>`)
-      .join("");
-  $("fFather").innerHTML = opts;
-  $("fMother").innerHTML = opts;
-  $("fSpouses").innerHTML = members
-    .map((p) => `<option value="${escAttr(p.id)}">${esc(p.nama)}</option>`)
-    .join("");
-}
-
-async function submitPerson(e) {
-  e.preventDefault();
-  const id = $("fId").value;
-  if (id && !adminToken) return;
-  const file = $("fPhoto").files[0];
-  try {
-    let photo = currentPhotoData;
-    if (file) {
-      if (file.size > 5 * 1024 * 1024)
-        throw new Error("Foto terlalu besar. Maksimal 5 MB.");
-      if (!adminToken)
-        throw new Error("Upload foto saat ini hanya untuk admin.");
-      const base64 = await fileToDataURL(file);
-      const up = await gas("uploadPhoto", base64, file.name, adminToken);
-      photo = up.url;
-    }
-    const spouses = [...$("fSpouses").selectedOptions]
-      .map((o) => o.value)
-      .join(",");
-    const data = {
-      id,
-      nama: $("fNama").value.trim(),
-      jenisKelamin: $("fGender").value,
-      tanggalLahir: $("fBirth").value,
-      hubungan: $("fRelation").value.trim(),
-      ayah: $("fFather").value,
-      ibu: $("fMother").value,
-      pasangan: spouses,
-      alamat: $("fAddress").value.trim(),
-      deskripsi: $("fDescription").value.trim(),
-      noHp: $("fPhone").value.trim(),
-      foto: photo,
-    };
-    const res = await gas("savePerson", data, adminToken);
-    toast(id ? "Data berhasil diperbarui." : "Anggota berhasil ditambahkan.");
-    closeModal("formModal");
-    await loadData();
-    if (res.person) openDetail(res.person.id);
-  } catch (err) {
-    $("formNotice").textContent = err.message;
-    $("formNotice").classList.remove("hidden");
+    
+    removeRecursive(id);
+    renderTree();
   }
 }
-
-async function removePerson(id) {
-  if (!adminToken) {
-    toast("Login admin diperlukan.");
-    return;
-  }
-  const p = find(id);
-  if (!p) return;
-  if (!confirm(`Hapus data ${p.nama}? Tindakan ini tidak dapat dibatalkan.`))
-    return;
-  try {
-    await gas("deletePerson", id, adminToken);
-    closeModal("detailModal");
-    toast("Data berhasil dihapus.");
-    await loadData();
-  } catch (e) {
-    toast(e.message);
-  }
-}
-
-async function submitLogin(e) {
-  e.preventDefault();
-  try {
-    const res = await gas("login", $("loginUser").value, $("loginPass").value);
-    if (!res.ok) throw new Error(res.message);
-    adminToken = res.token;
-    sessionStorage.setItem("silsilah_admin_token", adminToken);
-    closeModal("loginModal");
-    updateAdminUI();
-    render();
-    toast("Login admin berhasil.");
-  } catch (e) {
-    $("loginNotice").textContent = e.message;
-    $("loginNotice").classList.remove("hidden");
-  }
-}
-async function logout() {
-  try {
-    await gas("logout", adminToken);
-  } catch (e) {}
-  adminToken = "";
-  sessionStorage.removeItem("silsilah_admin_token");
-  updateAdminUI();
-  render();
-  toast("Logout berhasil.");
-}
-function updateAdminUI() {
-  $("btnLogin").classList.toggle("hidden", !!adminToken);
-  $("btnLogout").classList.toggle("hidden", !adminToken);
-}
-
-function previewPhoto() {
-  const file = $("fPhoto").files[0];
-  if (!file) {
-    return;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    toast("Foto terlalu besar. Maksimal 5 MB.");
-    $("fPhoto").value = "";
-    return;
-  }
-  const r = new FileReader();
-  r.onload = () => {
-    $("photoPreview").innerHTML = `<img src="${r.result}">`;
-  };
-  r.readAsDataURL(file);
-}
-function fileToDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-function photoUrl(v) {
-  const s = String(v || "");
-  if (s.includes("drive.google.com/thumbnail")) return s;
-  const m = s.match(/[-\w]{25,}/);
-  return m ? `https://drive.google.com/thumbnail?id=${m[0]}&sz=w1200` : s;
-}
-function normalizeDateInput(v) {
-  const s = String(v || "");
-  if (!s) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const d = new Date(s);
-  if (isNaN(d)) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function formatDate(v) {
-  const d = new Date(v);
-  if (isNaN(d)) return v;
-  return d.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-function openModal(id) {
-  $(id).classList.remove("hidden");
-}
-function closeModal(id) {
-  $(id).classList.add("hidden");
-}
-function setStatus(s) {
-  $("statusText").textContent = s;
-}
-function toast(s) {
-  $("toast").textContent = s;
-  $("toast").classList.remove("hidden");
-  setTimeout(() => $("toast").classList.add("hidden"), 3200);
-}
-function esc(s) {
-  return String(s ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
-  );
-}
-function escAttr(s) {
-  return esc(s);
-}
-window.openDetail = openDetail;
-window.openForm = openForm;
-window.removePerson = removePerson;
