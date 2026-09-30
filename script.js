@@ -1,6 +1,5 @@
 // ISI DENGAN URL WEB APP HASIL DEPLOY DARI GOOGLE APPS SCRIPT
-const API_URL = "https://script.google.com/macros/s/AKfycbyW8HufXjVAI6JhiWqdmTeZdDqHJEaLNxKEavWsRsan6brocuUH7H1oVNlrP0aH7yqKgw/exec";
-
+const API_URL = "https://script.google.com/macros/s/AKfycbzJI3aL0yPOn5SSiTVtqPtzJWSNEI3LEZ7GYc9xM_iBcgM5QWw6TitT_iCa15O-CZ0c8g/exec";
 
 
 let familyData = [];
@@ -10,48 +9,45 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDataFromSheet();
 });
 
-// Fungsi Memuat Data dengan Penanganan Redirection & Fallback
+// 1. Load Data Bebas CORS Menggunakan JSONP
 function loadDataFromSheet() {
   showLoading(true);
 
-  // Jika URL API belum diisi oleh pengguna
   if (!API_URL || API_URL.includes("PASTE_URL")) {
-    alert("URL API Google Apps Script belum diisi di script.js!");
+    alert("Silakan masukkan URL Deployment Apps Script pada file script.js!");
     showLoading(false);
     return;
   }
 
-  // Permintaan data dengan penanganan redirect otomatis dari Google
-  fetch(API_URL, {
-    method: "GET",
-    redirect: "follow"
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error("HTTP error! status: " + response.status);
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data.error) {
-        alert("Error Spreadsheet: " + data.error);
-        familyData = [];
-      } else {
-        familyData = data || [];
-      }
-      renderTree();
-    })
-    .catch(err => {
-      console.error("Gagal memuat data:", err);
-      alert("Gagal terhubung ke database. Silakan periksa koneksi internet atau URL Deployment Apps Script.");
-      const container = document.getElementById("familyTree");
-      if (container) {
-        container.innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data dari Spreadsheet.</p>";
-      }
-    })
-    .finally(() => {
-      showLoading(false); // Pastikan indikator loading selalu berhenti
-    });
+  // Buat nama callback unik
+  const callbackName = "jsonp_callback_" + Math.round(100000 * Math.random());
+  
+  // Daftarkan fungsi callback global
+  window[callbackName] = function(data) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+
+    if (data && data.error) {
+      alert("Error Database: " + data.error);
+      familyData = [];
+    } else {
+      familyData = data || [];
+    }
+    renderTree();
+    showLoading(false);
+  };
+
+  // Sisipkan elemen <script> secara dinamis
+  const script = document.createElement("script");
+  script.src = API_URL + (API_URL.includes("?") ? "&" : "?") + "callback=" + callbackName;
+  script.onerror = function() {
+    delete window[callbackName];
+    if (script.parentNode) document.body.removeChild(script);
+    alert("Gagal terhubung ke database. Pastikan 'Who has access' pada Deployment Apps Script diset ke 'Anyone'.");
+    showLoading(false);
+  };
+
+  document.body.appendChild(script);
 }
 
 function showLoading(isLoading) {
@@ -66,6 +62,9 @@ function showLoading(isLoading) {
       </div>`;
   }
 }
+
+
+
 
 // 2. Render Tree
 function renderTree() {
