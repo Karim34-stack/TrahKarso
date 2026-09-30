@@ -95,9 +95,13 @@
               <input type="text" id="fieldPhone" placeholder="08123456789" />
             </div>
             <div class="form-group">
-              <label>Path / URL Foto</label>
-              <input type="text" id="fieldPhoto" placeholder="uploads/foto.jpg" />
-              <small style="color:#666; font-size:11px;">Simpan foto di folder <b>uploads/</b></small>
+            <label>Foto Anggota</label>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" style="padding: 4px;" />
+            <input type="hidden" id="fieldPhoto" />
+            <div id="photoPreviewContainer" style="margin-top: 8px; display: none;">
+              <img id="photoPreview" src="" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);" />
+            </div>
+            <small style="color:#666; font-size:11px; display:block; margin-top:2px;">Opsional: Pilih file foto (maks. 2MB). Foto akan dikompresi otomatis agar cepat disimpan.</small>
             </div>
           </div>
 
