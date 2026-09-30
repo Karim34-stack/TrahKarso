@@ -54,11 +54,20 @@ function renderTree() {
 
   const ul = document.createElement("ul");
   roots.forEach(root => {
-    ul.appendChild(createTreeNode(root));
+    ul.appendChild((root));
   });
   container.appendChild(ul);
 }
 
+// Helper untuk mendapatkan URL Avatar Default
+function getDefaultAvatar(nama, gender) {
+  // Menggunakan UI Avatars untuk membuat avatar inisial nama berdasarkan jenis kelamin
+  const bgColor = gender === 'L' ? '2563eb' : 'ec4899'; // Biru untuk Pria (L), Pink untuk Wanita (P)
+  const formattedName = encodeURIComponent(nama || 'Keluarga');
+  return `https://ui-avatars.com/api/?name=${formattedName}&background=${bgColor}&color=ffffff&bold=true&rounded=true`;
+}
+
+// 2. Render Pohon Silsilah
 function createTreeNode(member) {
   const li = document.createElement("li");
 
@@ -73,10 +82,16 @@ function createTreeNode(member) {
     ? `<div class="spouse-count-badge"><i class="fa-solid fa-heart"></i> ${member.pasangan.length} Pasangan</div>`
     : '';
 
+  // Tentukan URL foto atau avatar default
+  const avatarUrl = getDefaultAvatar(member.nama, member.gender);
+  const photoSrc = (member.photo && member.photo.trim() !== "" && !member.photo.includes("placeholder")) 
+    ? member.photo 
+    : avatarUrl;
+
   li.innerHTML = `
     <div class="card" onclick="showDetail(${member.id})">
       ${adminActionsHTML}
-      <img src="${member.photo}" class="card-img" alt="${member.nama}" onerror="this.src='https://via.placeholder.com/64?text=Foto'"/>
+      <img src="${photoSrc}" class="card-img" alt="${member.nama}" onerror="this.onerror=null; this.src='${avatarUrl}';"/>
       <div class="card-name">${member.nama}</div>
       <div class="card-badge">${member.gender === 'L' ? 'Keturunan (L)' : 'Keturunan (P)'}</div>
       <div class="card-phone"><i class="fa-solid fa-phone"></i> ${member.phone || '-'}</div>
@@ -94,6 +109,73 @@ function createTreeNode(member) {
   }
 
   return li;
+}
+
+// 3. Render Modal Detail Anggota
+function showDetail(id) {
+  const member = familyData.find(m => Number(m.id) === Number(id));
+  if (!member) return;
+
+  document.getElementById("detailName").innerText = member.nama;
+
+  const avatarUrl = getDefaultAvatar(member.nama, member.gender);
+  const photoSrc = (member.photo && member.photo.trim() !== "" && !member.photo.includes("placeholder")) 
+    ? member.photo 
+    : avatarUrl;
+
+  let pasanganHTML = "<i>Tidak ada data pasangan.</i>";
+  if (member.pasangan && member.pasangan.length > 0) {
+    pasanganHTML = member.pasangan.map((p, idx) => `
+      <div class="spouse-section">
+        <div class="spouse-title">Pasangan ${idx + 1}: ${p.nama}</div>
+        <div><b>No HP:</b> ${p.phone || '-'}</div>
+        <div><b>Biografi:</b> ${p.bio || '-'}</div>
+      </div>
+    `).join('');
+  }
+
+  const children = familyData.filter(m => Number(m.parentId) === Number(member.id));
+  let childrenHTML = "<i>Tidak ada keturunan langsung.</i>";
+  if (children.length > 0) {
+    childrenHTML = "<ul class='detail-sub-list'>" + children.map(c => `<li><b>${c.nama}</b> (${c.gender === 'L' ? 'Laki-laki' : 'Perempuan'})</li>`).join('') + "</ul>";
+  }
+
+  let grandchildren = [];
+  children.forEach(c => {
+    const gChildren = familyData.filter(m => Number(m.parentId) === Number(c.id));
+    grandchildren = grandchildren.concat(gChildren);
+  });
+  let grandChildrenHTML = "<i>Tidak ada cucu.</i>";
+  if (grandchildren.length > 0) {
+    grandChildrenHTML = "<ul class='detail-sub-list'>" + grandchildren.map(gc => `<li><b>${gc.nama}</b></li>`).join('') + "</ul>";
+  }
+
+  const body = document.getElementById("detailBody");
+  body.innerHTML = `
+    <div style="text-align:center; margin-bottom:15px;">
+      <img src="${photoSrc}" style="width:90px; height:90px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='${avatarUrl}';"/>
+      <h4 style="margin-top:8px;">${member.nama}</h4>
+      <p style="font-size:0.85rem; color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${member.phone || 'Tidak ada No. HP'}</p>
+    </div>
+    
+    <div style="margin-bottom:15px;">
+      <h5 style="margin-bottom:4px;">Biografi:</h5>
+      <p style="font-size:0.9rem; color:#475569;">${member.bio || '-'}</p>
+    </div>
+
+    <hr style="margin:15px 0; border:none; border-top:1px solid var(--border);"/>
+
+    <h5 style="margin-bottom:8px;">Breakdown Pasangan:</h5>
+    ${pasanganHTML}
+
+    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Anak (Keturunan Asli):</h5>
+    ${childrenHTML}
+
+    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Cucu:</h5>
+    ${grandChildrenHTML}
+  `;
+
+  document.getElementById("detailModal").classList.add("active");
 }
 
 // 3. Simpan Data (Anti CORS Error)
