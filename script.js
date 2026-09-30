@@ -178,7 +178,115 @@ function showDetail(id) {
   document.getElementById("detailModal").classList.add("active");
 }
 
-// 3. Simpan Data (Anti CORS Error)
+let currentPhotoBase64 = "";
+
+// Fungsi untuk membaca dan mengompres foto dari "Choose File"
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Cek ukuran file
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Ukuran file terlalu besar. Maksimal 5MB.");
+    event.target.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // Resize & Kompresi Gambar menggunakan Canvas (Maksimal dimensi 300px)
+      const canvas = document.createElement("canvas");
+      const MAX_WIDTH = 300;
+      const MAX_HEIGHT = 300;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Hasil kompresi dalam format JPEG (Quality 0.7)
+      currentPhotoBase64 = canvas.toDataURL("image/jpeg", 0.7);
+
+      // Tampilkan Preview Foto
+      const previewImg = document.getElementById("photoPreview");
+      const previewContainer = document.getElementById("photoPreviewContainer");
+      if (previewImg && previewContainer) {
+        previewImg.src = currentPhotoBase64;
+        previewContainer.style.display = "block";
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Reset Form saat Buka Modal Tambah
+function openAddModal() {
+  document.getElementById("formTitle").innerText = "Tambah Anggota Keluarga";
+  document.getElementById("memberForm").reset();
+  document.getElementById("memberId").value = "";
+  document.getElementById("spousesContainer").innerHTML = "";
+  currentPhotoBase64 = "";
+  
+  const previewContainer = document.getElementById("photoPreviewContainer");
+  if (previewContainer) previewContainer.style.display = "none";
+
+  populateParentDropdown();
+  document.getElementById("formModal").classList.add("active");
+}
+
+// Reset/Set Form saat Buka Modal Edit
+function openEditModal(id) {
+  const member = familyData.find(m => Number(m.id) === Number(id));
+  if (!member) return;
+
+  document.getElementById("formTitle").innerText = "Edit Anggota Keluarga";
+  document.getElementById("memberId").value = member.id;
+  document.getElementById("fieldName").value = member.nama;
+  document.getElementById("fieldGender").value = member.gender;
+  document.getElementById("fieldPhone").value = member.phone || "";
+  document.getElementById("fieldPhoto").value = member.photo || "";
+  document.getElementById("fieldBio").value = member.bio || "";
+  currentPhotoBase64 = "";
+
+  const previewContainer = document.getElementById("photoPreviewContainer");
+  const previewImg = document.getElementById("photoPreview");
+  if (member.photo && member.photo.trim() !== "") {
+    previewImg.src = member.photo;
+    previewContainer.style.display = "block";
+  } else {
+    previewContainer.style.display = "none";
+  }
+
+  populateParentDropdown(member.id);
+  document.getElementById("fieldParent").value = member.parentId || "";
+
+  const container = document.getElementById("spousesContainer");
+  container.innerHTML = "";
+  if (member.pasangan) {
+    member.pasangan.forEach(p => addSpouseField(p.nama, p.phone, p.bio));
+  }
+
+  document.getElementById("formModal").classList.add("active");
+}
+
+// Optimasi Fungsi Simpan Data (Sangat Cepat)
 function saveMember(e) {
   e.preventDefault();
 
@@ -187,7 +295,7 @@ function saveMember(e) {
   const gender = document.getElementById("fieldGender").value;
   const parentId = document.getElementById("fieldParent").value;
   const phone = document.getElementById("fieldPhone").value;
-  const photo = document.getElementById("fieldPhoto").value;
+  const existingPhoto = document.getElementById("fieldPhoto").value;
   const bio = document.getElementById("fieldBio").value;
 
   const spousesArr = [];
@@ -205,7 +313,7 @@ function saveMember(e) {
     gender: gender,
     parentId: parentId ? Number(parentId) : "",
     phone: phone,
-    photo: photo,
+    photo: currentPhotoBase64 ? currentPhotoBase64 : existingPhoto, // Kirim foto baru jika diunggah
     bio: bio,
     pasangan: spousesArr
   };
@@ -214,7 +322,6 @@ function saveMember(e) {
   submitBtn.innerText = "Menyimpan...";
   submitBtn.disabled = true;
 
-  // Menggunakan URLSearchParams agar tidak kena masalah CORS pada Apps Script
   const params = new URLSearchParams();
   params.append("action", "save");
   params.append("data", JSON.stringify(memberObj));
@@ -229,7 +336,10 @@ function saveMember(e) {
       closeModal("formModal");
       loadDataFromSheet();
     })
-    .catch(err => alert("Gagal menyimpan data: " + err))
+    .catch(err => {
+      console.error(err);
+      alert("Gagal menyimpan data.");
+    })
     .finally(() => {
       submitBtn.innerText = "Simpan Data";
       submitBtn.disabled = false;
