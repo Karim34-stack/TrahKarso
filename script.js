@@ -1,5 +1,5 @@
-// Ganti dengan Web App URL dari Google Apps Script
-const API_URL = "https://script.google.com/macros/s/AKfycbzAEj0C85OfjBYUR1Hw6dByEYRLWAcg427YVG5mPgD486aSUpdT_mMN8U4Za7u_fdj68A/exec";
+// ISI DENGAN URL WEB APP HASIL DEPLOY DARI GOOGLE APPS SCRIPT
+const API_URL = "https://script.google.com/macros/s/AKfycbzfeYC318czY9PBmVNe-EPI45B8bjAhACezPcDCcOoaJKEA5DpTi1jbfIbJJ_lK7Kz3Uw/exec";
 
 let familyData = [];
 let isAdmin = false;
@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDataFromSheet();
 });
 
-// 1. Ambil Data dari Google Sheets via API
+// 1. Ambil Data
 function loadDataFromSheet() {
   showLoading(true);
   fetch(API_URL)
@@ -18,14 +18,15 @@ function loadDataFromSheet() {
       renderTree();
     })
     .catch(err => {
-      console.error(err);
-      alert("Gagal memuat data dari Spreadsheet.");
+      console.error("Fetch Error:", err);
+      alert("Gagal memuat data dari Spreadsheet. Pastikan URL API sudah benar.");
     })
     .finally(() => showLoading(false));
 }
 
 function showLoading(isLoading) {
   const container = document.getElementById("familyTree");
+  if (!container) return;
   if (isLoading) {
     container.innerHTML = `
       <div style="text-align:center; padding: 40px; width: 100%;">
@@ -35,12 +36,12 @@ function showLoading(isLoading) {
   }
 }
 
-// 2. Render Pohon Silsilah (Keturunan Asli)
+// 2. Render Tree
 function renderTree() {
   const container = document.getElementById("familyTree");
   container.innerHTML = "";
 
-  if (familyData.length === 0) {
+  if (!familyData || familyData.length === 0) {
     container.innerHTML = "<p style='text-align:center;'>Belum ada data keluarga di Spreadsheet.</p>";
     return;
   }
@@ -95,164 +96,7 @@ function createTreeNode(member) {
   return li;
 }
 
-// 3. Tampilkan Breakdown Detail Anggota
-function showDetail(id) {
-  const member = familyData.find(m => Number(m.id) === Number(id));
-  if (!member) return;
-
-  document.getElementById("detailName").innerText = member.nama;
-
-  let pasanganHTML = "<i>Tidak ada data pasangan.</i>";
-  if (member.pasangan && member.pasangan.length > 0) {
-    pasanganHTML = member.pasangan.map((p, idx) => `
-      <div class="spouse-section">
-        <div class="spouse-title">Pasangan ${idx + 1}: ${p.nama}</div>
-        <div><b>No HP:</b> ${p.phone || '-'}</div>
-        <div><b>Biografi:</b> ${p.bio || '-'}</div>
-      </div>
-    `).join('');
-  }
-
-  const children = familyData.filter(m => Number(m.parentId) === Number(member.id));
-  let childrenHTML = "<i>Tidak ada keturunan langsung.</i>";
-  if (children.length > 0) {
-    childrenHTML = "<ul class='detail-sub-list'>" + children.map(c => `<li><b>${c.nama}</b> (${c.gender === 'L' ? 'Laki-laki' : 'Perempuan'})</li>`).join('') + "</ul>";
-  }
-
-  let grandchildren = [];
-  children.forEach(c => {
-    const gChildren = familyData.filter(m => Number(m.parentId) === Number(c.id));
-    grandchildren = grandchildren.concat(gChildren);
-  });
-  let grandChildrenHTML = "<i>Tidak ada cucu.</i>";
-  if (grandchildren.length > 0) {
-    grandChildrenHTML = "<ul class='detail-sub-list'>" + grandchildren.map(gc => `<li><b>${gc.nama}</b></li>`).join('') + "</ul>";
-  }
-
-  const body = document.getElementById("detailBody");
-  body.innerHTML = `
-    <div style="text-align:center; margin-bottom:15px;">
-      <img src="${member.photo}" style="width:90px; height:90px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/90?text=Foto'"/>
-      <h4 style="margin-top:8px;">${member.nama}</h4>
-      <p style="font-size:0.85rem; color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${member.phone || 'Tidak ada No. HP'}</p>
-    </div>
-    
-    <div style="margin-bottom:15px;">
-      <h5 style="margin-bottom:4px;">Biografi:</h5>
-      <p style="font-size:0.9rem; color:#475569;">${member.bio || '-'}</p>
-    </div>
-
-    <hr style="margin:15px 0; border:none; border-top:1px solid var(--border);"/>
-
-    <h5 style="margin-bottom:8px;">Breakdown Pasangan:</h5>
-    ${pasanganHTML}
-
-    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Anak (Keturunan Asli):</h5>
-    ${childrenHTML}
-
-    <h5 style="margin-bottom:8px; margin-top:15px;">Daftar Cucu:</h5>
-    ${grandChildrenHTML}
-  `;
-
-  document.getElementById("detailModal").classList.add("active");
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove("active");
-}
-
-function toggleAdminModal() {
-  if (isAdmin) {
-    isAdmin = false;
-    document.getElementById("adminBtnText").innerText = "Login Admin";
-    alert("Anda telah keluar dari mode Admin.");
-    renderTree();
-  } else {
-    document.getElementById("adminModal").classList.add("active");
-  }
-}
-
-function loginAdmin() {
-  const pin = document.getElementById("adminPin").value;
-  if (pin === "1234") {
-    isAdmin = true;
-    document.getElementById("adminBtnText").innerText = "Logout Admin";
-    closeModal("adminModal");
-    document.getElementById("adminPin").value = "";
-    alert("Login Admin Berhasil!");
-    renderTree();
-  } else {
-    alert("PIN Admin Salah!");
-  }
-}
-
-function openAddModal() {
-  document.getElementById("formTitle").innerText = "Tambah Anggota Keluarga";
-  document.getElementById("memberForm").reset();
-  document.getElementById("memberId").value = "";
-  document.getElementById("spousesContainer").innerHTML = "";
-  populateParentDropdown();
-  document.getElementById("formModal").classList.add("active");
-}
-
-function openEditModal(id) {
-  const member = familyData.find(m => Number(m.id) === Number(id));
-  if (!member) return;
-
-  document.getElementById("formTitle").innerText = "Edit Anggota Keluarga";
-  document.getElementById("memberId").value = member.id;
-  document.getElementById("fieldName").value = member.nama;
-  document.getElementById("fieldGender").value = member.gender;
-  document.getElementById("fieldPhone").value = member.phone || "";
-  document.getElementById("fieldPhoto").value = member.photo || "";
-  document.getElementById("fieldBio").value = member.bio || "";
-
-  populateParentDropdown(member.id);
-  document.getElementById("fieldParent").value = member.parentId || "";
-
-  const container = document.getElementById("spousesContainer");
-  container.innerHTML = "";
-  if (member.pasangan) {
-    member.pasangan.forEach(p => addSpouseField(p.nama, p.phone, p.bio));
-  }
-
-  document.getElementById("formModal").classList.add("active");
-}
-
-function populateParentDropdown(currentId = null) {
-  const select = document.getElementById("fieldParent");
-  select.innerHTML = '<option value="">-- Orang Tua Akar / Utama --</option>';
-  
-  familyData.forEach(m => {
-    if (Number(m.id) !== Number(currentId)) {
-      select.innerHTML += `<option value="${m.id}">${m.nama}</option>`;
-    }
-  });
-}
-
-function addSpouseField(nama = '', phone = '', bio = '') {
-  const container = document.getElementById("spousesContainer");
-  const div = document.createElement("div");
-  div.className = "spouse-form-box";
-  div.innerHTML = `
-    <button type="button" class="btn-icon danger" style="position:absolute; top:5px; right:5px;" onclick="this.parentElement.remove()">&times;</button>
-    <div class="form-group" style="margin-bottom:6px;">
-      <label>Nama Pasangan</label>
-      <input type="text" class="spouse-nama" value="${nama}" placeholder="Nama Pasangan" required />
-    </div>
-    <div class="form-row">
-      <div class="form-group" style="margin-bottom:0;">
-        <input type="text" class="spouse-phone" value="${phone}" placeholder="No HP Pasangan" />
-      </div>
-      <div class="form-group" style="margin-bottom:0;">
-        <input type="text" class="spouse-bio" value="${bio}" placeholder="Biografi Pasangan" />
-      </div>
-    </div>
-  `;
-  container.appendChild(div);
-}
-
-// 4. Simpan Data ke Google Sheets
+// 3. Simpan Data (Anti CORS Error)
 function saveMember(e) {
   e.preventDefault();
 
@@ -273,27 +117,29 @@ function saveMember(e) {
     });
   });
 
-  const payload = {
-    action: "save",
-    data: {
-      id: id ? Number(id) : null,
-      nama: nama,
-      gender: gender,
-      parentId: parentId ? Number(parentId) : "",
-      phone: phone,
-      photo: photo,
-      bio: bio,
-      pasangan: spousesArr
-    }
+  const memberObj = {
+    id: id ? Number(id) : null,
+    nama: nama,
+    gender: gender,
+    parentId: parentId ? Number(parentId) : "",
+    phone: phone,
+    photo: photo,
+    bio: bio,
+    pasangan: spousesArr
   };
 
   const submitBtn = e.target.querySelector("button[type='submit']");
   submitBtn.innerText = "Menyimpan...";
   submitBtn.disabled = true;
 
+  // Menggunakan URLSearchParams agar tidak kena masalah CORS pada Apps Script
+  const params = new URLSearchParams();
+  params.append("action", "save");
+  params.append("data", JSON.stringify(memberObj));
+
   fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: params
   })
     .then(res => res.json())
     .then(res => {
@@ -308,14 +154,19 @@ function saveMember(e) {
     });
 }
 
-// 5. Hapus Data dari Google Sheets
+// 4. Hapus Data (Anti CORS Error)
 function deleteMember(id) {
   if (!isAdmin) return alert("Akses ditolak! Login sebagai Admin terlebih dahulu.");
 
   if (confirm("Apakah Anda yakin ingin menghapus data anggota ini dari Google Sheets?")) {
+    const params = new URLSearchParams();
+    params.append("action", "delete");
+    params.append("id", id);
+    params.append("pin", "1234");
+
     fetch(API_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "delete", id: id, pin: "1234" })
+      body: params
     })
       .then(res => res.json())
       .then(res => {
