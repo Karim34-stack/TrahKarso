@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Silsilah Keluarga</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">FAMILY TREE</div>
+        <h1>Silsilah Keluarga</h1>
+        <p>
+          Garis keturunan utama ditampilkan tanpa pasangan. Klik kartu untuk
+          melihat pasangan dan keturunannya.
+        </p>
+      </div>
+      <div class="header-actions">
+        <button id="btnRefresh" class="btn ghost">↻ Refresh</button>
+        <button id="btnLogin" class="btn primary">Admin</button>
+        <button id="btnLogout" class="btn danger hidden">Logout</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="toolbar card">
+        <div class="field grow">
+          <label>Cari anggota</label>
+          <input id="searchInput" placeholder="Cari nama, no HP, hubungan..." />
+        </div>
+        <div class="field">
+          <label>Generasi</label>
+          <select id="generationFilter">
+            <option value="all">Semua generasi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Jenis kelamin</label>
+          <select id="genderFilter">
+            <option value="all">Semua</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+        </div>
+        <div class="toolbar-actions">
+          <button id="btnAdd" class="btn primary">＋ Tambah Anggota</button>
+        </div>
+      </section>
+
+      <section class="stats">
+        <div class="stat card">
+          <span>Total anggota</span><strong id="totalMembers">0</strong>
+        </div>
+        <div class="stat card">
+          <span>Generasi tampil</span
+          ><strong id="shownGeneration">Semua</strong>
+        </div>
+        <div class="stat card">
+          <span>Jumlah anggota</span><strong id="shownMembers">0</strong>
+        </div>
+        <div class="stat card">
+          <span>Keturunan asli</span><strong id="bloodMembers">0</strong>
+        </div>
+      </section>
+
+      <section class="tree-panel card">
+        <div class="section-head">
+          <div>
+            <h2>Pohon Keturunan</h2>
+            <span class="muted">Pasangan tidak menjadi node utama pohon.</span>
+          </div>
+          <div id="statusText" class="status">Memuat data...</div>
+        </div>
+        <div id="tree" class="tree"></div>
+        <div id="emptyState" class="empty hidden">
+          <div class="empty-icon">🌳</div>
+          <h3>Belum ada data</h3>
+          <p>Tambahkan anggota pertama untuk membangun silsilah.</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- DETAIL -->
+    <div id="detailModal" class="modal hidden">
+      <div class="modal-box wide">
+        <button class="modal-close" data-close="detailModal">×</button>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+
+    <!-- FORM -->
+    <div id="formModal" class="modal hidden">
+      <div class="modal-box">
+        <button class="modal-close" data-close="formModal">×</button>
+        <h2 id="formTitle">Tambah Anggota</h2>
+        <form id="personForm">
+          <input type="hidden" id="fId" />
+          <div class="form-grid">
+            <div class="field full">
+              <label>Nama *</label>
+              <input id="fNama" required />
+            </div>
+            <div class="field">
+              <label>Jenis kelamin</label>
+              <select id="fGender">
+                <option value="">-</option>
+                <option>Laki-laki</option>
+                <option>Perempuan</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tanggal lahir</label>
+              <input id="fBirth" type="date" />
+            </div>
+            <div class="field">
+              <label>Hubungan / sebutan</label>
+              <input id="fRelation" placeholder="Anak, cucu, ayah, ibu..." />
+            </div>
+            <div class="field">
+              <label>No. HP</label>
+              <input id="fPhone" inputmode="tel" placeholder="08xxxxxxxxxx" />
+            </div>
+            <div class="field">
+              <label>Ayah kandung</label>
+              <select id="fFather"></select>
+            </div>
+            <div class="field">
+              <label>Ibu kandung</label>
+              <select id="fMother"></select>
+            </div>
+            <div class="field full">
+              <label>Pasangan (bisa lebih dari satu)</label>
+              <select id="fSpouses" multiple></select>
+              <small>Gunakan Ctrl/Cmd untuk memilih beberapa pasangan.</small>
+            </div>
+            <div class="field full">
+              <label>Alamat</label>
+              <textarea id="fAddress" rows="2"></textarea>
+            </div>
+            <div class="field full">
+              <label>Deskripsi</label>
+              <textarea
+                id="fDescription"
+                rows="3"
+                placeholder="Keterangan keluarga..."
+              ></textarea>
+            </div>
+            <div class="field full">
+              <label>Foto (maks. 5 MB)</label>
+              <input id="fPhoto" type="file" accept="image/*" />
+              <div id="photoPreview" class="photo-preview"></div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn ghost" data-close="formModal">
+              Batal
+            </button>
+            <button class="btn primary" type="submit">Simpan</button>
+          </div>
+          <div id="formNotice" class="notice hidden"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginModal" class="modal hidden">
+      <div class="modal-box small">
+        <button class="modal-close" data-close="loginModal">×</button>
+        <h2>Login Admin</h2>
+        <p class="muted">Admin diperlukan untuk edit dan hapus data.</p>
+        <form id="loginForm">
+          <div class="field">
+            <label>Username</label
+            ><input id="loginUser" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label>Password</label
+            ><input
+              id="loginPass"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <button class="btn primary full-btn">Login</button>
+          <div id="loginNotice" class="notice hidden"></div>
+        </form>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="script.js"></script>
+  </body>
+</html>
