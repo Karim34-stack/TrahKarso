@@ -1,70 +1,53 @@
-// Data awal silsilah keluarga (Garis Keturunan Asli)
-let familyData = [
-  {
-    id: 1,
-    nama: "Kakek H. Ahmad",
-    gender: "L",
-    parentId: null,
-    phone: "081234567890",
-    photo: "uploads/default.jpg",
-    bio: "Pendiri keluarga besar. Suka berkebun dan berorganisasi.",
-    pasangan: [
-      { nama: "Nenek Hj. Siti", phone: "081234567891", bio: "Istri pertama H. Ahmad" }
-    ]
-  },
-  {
-    id: 2,
-    nama: "Budi Santoso",
-    gender: "L",
-    parentId: 1,
-    phone: "081298765432",
-    photo: "uploads/default.jpg",
-    bio: "Anak pertama Kakek Ahmad. Bekerja sebagai wirausaha.",
-    pasangan: [
-      { nama: "Rina Indriani", phone: "081298765433", bio: "Istri Budi Santoso" }
-    ]
-  },
-  {
-    id: 3,
-    nama: "Siti Rahma",
-    gender: "P",
-    parentId: 1,
-    phone: "081388887777",
-    photo: "uploads/default.jpg",
-    bio: "Anak kedua Kakek Ahmad. Berprofesi sebagai guru.",
-    pasangan: [
-      { nama: "Hendra Wijaya", phone: "081388887778", bio: "Suami Siti Rahma" }
-    ]
-  },
-  {
-    id: 4,
-    nama: "Andi Santoso",
-    gender: "L",
-    parentId: 2,
-    phone: "081311223344",
-    photo: "uploads/default.jpg",
-    bio: "Cucu pertama dari Budi Santoso.",
-    pasangan: []
-  }
-];
+// Ganti dengan Web App URL dari Google Apps Script
+const API_URL = "https://script.google.com/macros/s/AKfycbzAEj0C85OfjBYUR1Hw6dByEYRLWAcg427YVG5mPgD486aSUpdT_mMN8U4Za7u_fdj68A/exec";
 
+let familyData = [];
 let isAdmin = false;
-const ADMIN_PIN = "1234";
 
-// Inisialisasi saat halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
-  renderTree();
+  loadDataFromSheet();
 });
 
-// Render Pohon Silsilah
+// 1. Ambil Data dari Google Sheets via API
+function loadDataFromSheet() {
+  showLoading(true);
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      familyData = data || [];
+      renderTree();
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Gagal memuat data dari Spreadsheet.");
+    })
+    .finally(() => showLoading(false));
+}
+
+function showLoading(isLoading) {
+  const container = document.getElementById("familyTree");
+  if (isLoading) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 40px; width: 100%;">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--primary);"></i>
+        <p style="margin-top:10px; color: var(--text-muted);">Memuat data dari database...</p>
+      </div>`;
+  }
+}
+
+// 2. Render Pohon Silsilah (Keturunan Asli)
 function renderTree() {
   const container = document.getElementById("familyTree");
   container.innerHTML = "";
 
-  // Cari anggota akar (parentId == null)
-  const roots = familyData.filter(m => m.parentId === null);
+  if (familyData.length === 0) {
+    container.innerHTML = "<p style='text-align:center;'>Belum ada data keluarga di Spreadsheet.</p>";
+    return;
+  }
+
+  const roots = familyData.filter(m => !m.parentId || m.parentId === 0);
   if (roots.length === 0) {
-    container.innerHTML = "<p>Belum ada data silsilah keluarga.</p>";
+    container.innerHTML = "<p style='text-align:center;'>Data akar utama tidak ditemukan.</p>";
     return;
   }
 
@@ -75,11 +58,9 @@ function renderTree() {
   container.appendChild(ul);
 }
 
-// Rekursif untuk membuat node pohon
 function createTreeNode(member) {
   const li = document.createElement("li");
 
-  // Admin Actions HTML
   const adminActionsHTML = isAdmin ? `
     <div class="admin-card-actions" onclick="event.stopPropagation()">
       <button class="btn-icon" onclick="openEditModal(${member.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
@@ -87,8 +68,8 @@ function createTreeNode(member) {
     </div>
   ` : '';
 
-  const spouseCountText = member.pasangan && member.pasangan.length > 0 
-    ? `<div class="spouse-count-badge"><i class="fa-solid fa-heart"></i> ${member.pasangan.length} Pasangan</div>` 
+  const spouseBadge = (member.pasangan && member.pasangan.length > 0)
+    ? `<div class="spouse-count-badge"><i class="fa-solid fa-heart"></i> ${member.pasangan.length} Pasangan</div>`
     : '';
 
   li.innerHTML = `
@@ -98,12 +79,11 @@ function createTreeNode(member) {
       <div class="card-name">${member.nama}</div>
       <div class="card-badge">${member.gender === 'L' ? 'Keturunan (L)' : 'Keturunan (P)'}</div>
       <div class="card-phone"><i class="fa-solid fa-phone"></i> ${member.phone || '-'}</div>
-      ${spouseCountText}
+      ${spouseBadge}
     </div>
   `;
 
-  // Cari anak-anak langsung (keturunan asli)
-  const children = familyData.filter(m => m.parentId === member.id);
+  const children = familyData.filter(m => Number(m.parentId) === Number(member.id));
   if (children.length > 0) {
     const ul = document.createElement("ul");
     children.forEach(child => {
@@ -115,14 +95,13 @@ function createTreeNode(member) {
   return li;
 }
 
-// Tampilkan Detail & Breakdown Anggota
+// 3. Tampilkan Breakdown Detail Anggota
 function showDetail(id) {
-  const member = familyData.find(m => m.id === id);
+  const member = familyData.find(m => Number(m.id) === Number(id));
   if (!member) return;
 
   document.getElementById("detailName").innerText = member.nama;
 
-  // Render Breakdown Pasangan
   let pasanganHTML = "<i>Tidak ada data pasangan.</i>";
   if (member.pasangan && member.pasangan.length > 0) {
     pasanganHTML = member.pasangan.map((p, idx) => `
@@ -134,17 +113,15 @@ function showDetail(id) {
     `).join('');
   }
 
-  // Render Anak (Keturunan Langsung)
-  const children = familyData.filter(m => m.parentId === member.id);
+  const children = familyData.filter(m => Number(m.parentId) === Number(member.id));
   let childrenHTML = "<i>Tidak ada keturunan langsung.</i>";
   if (children.length > 0) {
     childrenHTML = "<ul class='detail-sub-list'>" + children.map(c => `<li><b>${c.nama}</b> (${c.gender === 'L' ? 'Laki-laki' : 'Perempuan'})</li>`).join('') + "</ul>";
   }
 
-  // Render Cucu
   let grandchildren = [];
   children.forEach(c => {
-    const gChildren = familyData.filter(m => m.parentId === c.id);
+    const gChildren = familyData.filter(m => Number(m.parentId) === Number(c.id));
     grandchildren = grandchildren.concat(gChildren);
   });
   let grandChildrenHTML = "<i>Tidak ada cucu.</i>";
@@ -180,7 +157,6 @@ function showDetail(id) {
   document.getElementById("detailModal").classList.add("active");
 }
 
-// Modal Toggle Functions
 function closeModal(id) {
   document.getElementById(id).classList.remove("active");
 }
@@ -198,19 +174,18 @@ function toggleAdminModal() {
 
 function loginAdmin() {
   const pin = document.getElementById("adminPin").value;
-  if (pin === ADMIN_PIN) {
+  if (pin === "1234") {
     isAdmin = true;
     document.getElementById("adminBtnText").innerText = "Logout Admin";
     closeModal("adminModal");
     document.getElementById("adminPin").value = "";
-    alert("Login Admin Berhasil! Anda sekarang dapat mengedit dan menghapus data.");
+    alert("Login Admin Berhasil!");
     renderTree();
   } else {
-    alert("PIN Admin Salah! (Default: 1234)");
+    alert("PIN Admin Salah!");
   }
 }
 
-// Open Modal Add / Edit
 function openAddModal() {
   document.getElementById("formTitle").innerText = "Tambah Anggota Keluarga";
   document.getElementById("memberForm").reset();
@@ -221,7 +196,7 @@ function openAddModal() {
 }
 
 function openEditModal(id) {
-  const member = familyData.find(m => m.id === id);
+  const member = familyData.find(m => Number(m.id) === Number(id));
   if (!member) return;
 
   document.getElementById("formTitle").innerText = "Edit Anggota Keluarga";
@@ -235,7 +210,6 @@ function openEditModal(id) {
   populateParentDropdown(member.id);
   document.getElementById("fieldParent").value = member.parentId || "";
 
-  // Populate Spouses
   const container = document.getElementById("spousesContainer");
   container.innerHTML = "";
   if (member.pasangan) {
@@ -245,13 +219,12 @@ function openEditModal(id) {
   document.getElementById("formModal").classList.add("active");
 }
 
-// Form Helpers
 function populateParentDropdown(currentId = null) {
   const select = document.getElementById("fieldParent");
   select.innerHTML = '<option value="">-- Orang Tua Akar / Utama --</option>';
   
   familyData.forEach(m => {
-    if (m.id !== currentId) {
+    if (Number(m.id) !== Number(currentId)) {
       select.innerHTML += `<option value="${m.id}">${m.nama}</option>`;
     }
   });
@@ -279,19 +252,18 @@ function addSpouseField(nama = '', phone = '', bio = '') {
   container.appendChild(div);
 }
 
-// Save Member Function
+// 4. Simpan Data ke Google Sheets
 function saveMember(e) {
   e.preventDefault();
 
   const id = document.getElementById("memberId").value;
   const nama = document.getElementById("fieldName").value;
   const gender = document.getElementById("fieldGender").value;
-  const parentId = document.getElementById("fieldParent").value ? parseInt(document.getElementById("fieldParent").value) : null;
+  const parentId = document.getElementById("fieldParent").value;
   const phone = document.getElementById("fieldPhone").value;
-  const photo = document.getElementById("fieldPhoto").value || "uploads/default.jpg";
+  const photo = document.getElementById("fieldPhoto").value;
   const bio = document.getElementById("fieldBio").value;
 
-  // Spouses Gathering
   const spousesArr = [];
   document.querySelectorAll(".spouse-form-box").forEach(box => {
     spousesArr.push({
@@ -301,33 +273,55 @@ function saveMember(e) {
     });
   });
 
-  if (id) {
-    // Edit Existing
-    const index = familyData.findIndex(m => m.id === parseInt(id));
-    if (index !== -1) {
-      familyData[index] = { id: parseInt(id), nama, gender, parentId, phone, photo, bio, pasangan: spousesArr };
+  const payload = {
+    action: "save",
+    data: {
+      id: id ? Number(id) : null,
+      nama: nama,
+      gender: gender,
+      parentId: parentId ? Number(parentId) : "",
+      phone: phone,
+      photo: photo,
+      bio: bio,
+      pasangan: spousesArr
     }
-  } else {
-    // Create New
-    const newId = familyData.length > 0 ? Math.max(...familyData.map(m => m.id)) + 1 : 1;
-    familyData.push({ id: newId, nama, gender, parentId, phone, photo, bio, pasangan: spousesArr });
-  }
+  };
 
-  closeModal("formModal");
-  renderTree();
+  const submitBtn = e.target.querySelector("button[type='submit']");
+  submitBtn.innerText = "Menyimpan...";
+  submitBtn.disabled = true;
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(res => {
+      alert(res.message);
+      closeModal("formModal");
+      loadDataFromSheet();
+    })
+    .catch(err => alert("Gagal menyimpan data: " + err))
+    .finally(() => {
+      submitBtn.innerText = "Simpan Data";
+      submitBtn.disabled = false;
+    });
 }
 
-// Delete Member Function
+// 5. Hapus Data dari Google Sheets
 function deleteMember(id) {
-  if (confirm("Apakah Anda yakin ingin menghapus data ini beserta seluruh struktur keturunannya?")) {
-    // Hapus anggota dan keturunannya secara rekursif
-    function removeRecursive(memberId) {
-      const children = familyData.filter(m => m.parentId === memberId);
-      children.forEach(c => removeRecursive(c.id));
-      familyData = familyData.filter(m => m.id !== memberId);
-    }
-    
-    removeRecursive(id);
-    renderTree();
+  if (!isAdmin) return alert("Akses ditolak! Login sebagai Admin terlebih dahulu.");
+
+  if (confirm("Apakah Anda yakin ingin menghapus data anggota ini dari Google Sheets?")) {
+    fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "delete", id: id, pin: "1234" })
+    })
+      .then(res => res.json())
+      .then(res => {
+        alert(res.message);
+        if (res.success) loadDataFromSheet();
+      })
+      .catch(err => alert("Gagal menghapus data: " + err));
   }
 }
