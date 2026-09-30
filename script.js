@@ -1,5 +1,7 @@
 // ISI DENGAN URL WEB APP HASIL DEPLOY DARI GOOGLE APPS SCRIPT
-const API_URL = "https://script.google.com/macros/s/AKfycbzfeYC318czY9PBmVNe-EPI45B8bjAhACezPcDCcOoaJKEA5DpTi1jbfIbJJ_lK7Kz3Uw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyW8HufXjVAI6JhiWqdmTeZdDqHJEaLNxKEavWsRsan6brocuUH7H1oVNlrP0aH7yqKgw/exec";
+
+
 
 let familyData = [];
 let isAdmin = false;
@@ -8,25 +10,54 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDataFromSheet();
 });
 
-// 1. Ambil Data
+// Fungsi Memuat Data dengan Penanganan Redirection & Fallback
 function loadDataFromSheet() {
   showLoading(true);
-  fetch(API_URL)
-    .then(res => res.json())
+
+  // Jika URL API belum diisi oleh pengguna
+  if (!API_URL || API_URL.includes("PASTE_URL")) {
+    alert("URL API Google Apps Script belum diisi di script.js!");
+    showLoading(false);
+    return;
+  }
+
+  // Permintaan data dengan penanganan redirect otomatis dari Google
+  fetch(API_URL, {
+    method: "GET",
+    redirect: "follow"
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("HTTP error! status: " + response.status);
+      }
+      return response.json();
+    })
     .then(data => {
-      familyData = data || [];
+      if (data.error) {
+        alert("Error Spreadsheet: " + data.error);
+        familyData = [];
+      } else {
+        familyData = data || [];
+      }
       renderTree();
     })
     .catch(err => {
-      console.error("Fetch Error:", err);
-      alert("Gagal memuat data dari Spreadsheet. Pastikan URL API sudah benar.");
+      console.error("Gagal memuat data:", err);
+      alert("Gagal terhubung ke database. Silakan periksa koneksi internet atau URL Deployment Apps Script.");
+      const container = document.getElementById("familyTree");
+      if (container) {
+        container.innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data dari Spreadsheet.</p>";
+      }
     })
-    .finally(() => showLoading(false));
+    .finally(() => {
+      showLoading(false); // Pastikan indikator loading selalu berhenti
+    });
 }
 
 function showLoading(isLoading) {
   const container = document.getElementById("familyTree");
   if (!container) return;
+  
   if (isLoading) {
     container.innerHTML = `
       <div style="text-align:center; padding: 40px; width: 100%;">
