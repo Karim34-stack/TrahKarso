@@ -26,12 +26,14 @@
     </div>
   </div>
 
-  <!-- Modal Tambah Anggota Baru -->
-  <div class="modal" id="addModal">
+  <!-- Modal Tambah / Edit Anggota -->
+  <div class="modal" id="formModal">
     <div class="modal-content">
-      <span class="close-btn" onclick="closeModal('addModal')">&times;</span>
-      <h2>Tambah Anggota Keluarga Baru</h2>
-      <form id="addForm" onsubmit="submitForm(event)">
+      <span class="close-btn" onclick="closeModal('formModal')">&times;</span>
+      <h2 id="modalTitle">Tambah Anggota Keluarga Baru</h2>
+      <form id="memberForm" onsubmit="submitForm(event)">
+        <input type="hidden" id="edit_id">
+        
         <div class="form-group">
           <label>Nama Lengkap*</label>
           <input type="text" id="nama_lengkap" required>
@@ -46,7 +48,7 @@
         </div>
 
         <div class="form-group">
-          <label>Orang Tua (Garis Keturunan)*</label>
+          <label>Orang Tua (Garis Keturunan)</label>
           <select id="id_orang_tua" onchange="updatePasanganParentOptions()">
             <option value="">-- Akar / Anggota Pertama --</option>
           </select>
@@ -75,11 +77,11 @@
         </div>
 
         <div class="form-group">
-          <label>Foto Profil</label>
+          <label>Ganti / Upload Foto Profil</label>
           <input type="file" id="foto_file" accept="image/*">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="pasanganNewGroup">
           <label>Nama Pasangan (Opsional)</label>
           <input type="text" id="nama_pasangan" placeholder="Nama Suami/Istri">
         </div>
