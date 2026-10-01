@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <!-- Modal Tambah / Edit Anggota -->
+  <!-- Modal Form Anggota (Keturunan) -->
   <div class="modal" id="formModal">
     <div class="modal-content">
       <span class="close-btn" onclick="closeModal('formModal')">&times;</span>
@@ -72,12 +72,12 @@
         </div>
 
         <div class="form-group">
-          <label>Bio / Catatan</label>
-          <textarea id="bio" rows="3"></textarea>
+          <label>Bio / Catatan Ringkas</label>
+          <textarea id="bio" rows="3" placeholder="Akan muncul di card pohon silsilah..."></textarea>
         </div>
 
         <div class="form-group">
-          <label>Ganti / Upload Foto Profil</label>
+          <label>Upload Foto Profil</label>
           <input type="file" id="foto_file" accept="image/*">
         </div>
 
@@ -87,6 +87,42 @@
         </div>
 
         <button type="submit" class="btn-submit" id="btnSubmit">Simpan Data</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Pasangan Direct -->
+  <div class="modal" id="pasanganModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('pasanganModal')">&times;</span>
+      <h2>Tambah Pasangan</h2>
+      <form id="pasanganForm" onsubmit="submitPasanganForm(event)">
+        <input type="hidden" id="pasangan_id_keturunan">
+        
+        <div class="form-group">
+          <label>Nama Pasangan*</label>
+          <input type="text" id="p_nama_pasangan" required>
+        </div>
+
+        <div class="form-group">
+          <label>Pasangan Ke-*</label>
+          <input type="number" id="p_urutan_pasangan" min="1" value="1" required>
+        </div>
+
+        <div class="form-group">
+          <label>Jenis Kelamin*</label>
+          <select id="p_jenis_kelamin" required>
+            <option value="P">Perempuan</option>
+            <option value="L">Laki-laki</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Bio / Catatan Pasangan</label>
+          <textarea id="p_bio" rows="2"></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnPasanganSubmit">Simpan Pasangan</button>
       </form>
     </div>
   </div>
