@@ -45,10 +45,13 @@ function createNodeElement(person) {
   card.onclick = () => openDetailModal(person);
 
   const photoPath = person.foto_profil || "https://via.placeholder.com/150";
+  const bioText = person.bio ? `<p class="card-bio" title="${person.bio}">${person.bio}</p>` : '';
+
   card.innerHTML = `
     <img src="${photoPath}" alt="${person.nama_lengkap}" onerror="this.src='https://via.placeholder.com/150'">
     <h4>${person.nama_lengkap}</h4>
-    <p>Anak ke-${person.urutan_anak}</p>
+    <p class="child-order">Anak ke-${person.urutan_anak}</p>
+    ${bioText}
   `;
 
   node.appendChild(card);
@@ -97,16 +100,42 @@ function openDetailModal(person) {
     <p><strong>Urutan:</strong> Anak ke-${person.urutan_anak}</p>
     <p><strong>Tanggal Lahir:</strong> ${person.tanggal_lahir ? String(person.tanggal_lahir).substring(0, 10) : '-'}</p>
     <p><strong>Bio:</strong> ${person.bio || '-'}</p>
+
+    <!-- Tombol Kerabat (Komunikasi 2 Arah) -->
     <div class="btn-action-group">
-      <button class="btn-edit" onclick="openEditModal('${person.id}')">Edit Anggota</button>
-      <button class="btn-delete" onclick="deleteKeturunan('${person.id}')">Hapus Anggota</button>
+      <button class="btn-add-rel" onclick="openAddAnakDirect('${person.id}')">+ Tambah Anak</button>
+      <button class="btn-add-rel" onclick="openAddPasanganDirect('${person.id}')">+ Tambah Pasangan</button>
+      <button class="btn-edit" onclick="openEditModal('${person.id}')">Edit</button>
+      <button class="btn-delete" onclick="deleteKeturunan('${person.id}')">Hapus</button>
     </div>
+
     <hr style="margin: 15px 0;">
     <h3>Daftar Pasangan & Anak</h3>
     ${spouseHTML}
   `;
 
   modal.style.display = "flex";
+}
+
+// FUNGSI KOMUNIKASI 2 ARAH: Tambah Anak Direct
+function openAddAnakDirect(parentId) {
+  closeModal('detailModal');
+  openAddModal();
+  document.getElementById("id_orang_tua").value = parentId;
+  updatePasanganParentOptions();
+}
+
+// FUNGSI KOMUNIKASI 2 ARAH: Tambah Pasangan Direct
+function openAddPasanganDirect(keturunanId) {
+  closeModal('detailModal');
+  document.getElementById("pasangan_id_keturunan").value = keturunanId;
+  document.getElementById("p_nama_pasangan").value = "";
+  document.getElementById("p_bio").value = "";
+  
+  const existingSpouses = familyData.pasangan.filter(s => s.id_keturunan_asli === keturunanId);
+  document.getElementById("p_urutan_pasangan").value = existingSpouses.length + 1;
+  
+  document.getElementById("pasanganModal").style.display = "flex";
 }
 
 function openAddModal() {
@@ -232,8 +261,43 @@ async function submitForm(event) {
   });
 }
 
+function submitPasanganForm(event) {
+  event.preventDefault();
+  const btn = document.getElementById("btnPasanganSubmit");
+  btn.disabled = true;
+  btn.textContent = "Menyimpan...";
+
+  const payload = {
+    action: "add_pasangan",
+    id_keturunan_asli: document.getElementById("pasangan_id_keturunan").value,
+    nama_pasangan: document.getElementById("p_nama_pasangan").value,
+    urutan_pasangan: document.getElementById("p_urutan_pasangan").value,
+    jenis_kelamin: document.getElementById("p_jenis_kelamin").value,
+    bio: document.getElementById("p_bio").value
+  };
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(res => {
+    alert(res.message || "Pasangan berhasil disimpan!");
+    closeModal("pasanganModal");
+    fetchData();
+  })
+  .catch(err => {
+    console.error("Gagal menyimpan pasangan:", err);
+    alert("Gagal menyimpan pasangan.");
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = "Simpan Pasangan";
+  });
+}
+
 function deleteKeturunan(id) {
-  if (confirm("Apakah Anda yakin ingin menghapus anggota ini? Data di pohon akan terhapus.")) {
+  if (confirm("Yakin ingin menghapus anggota ini?")) {
     fetch(API_URL, {
       method: "POST",
       body: JSON.stringify({ action: "delete_keturunan", id: id })
@@ -248,7 +312,7 @@ function deleteKeturunan(id) {
 }
 
 function deletePasangan(id) {
-  if (confirm("Apakah Anda yakin ingin menghapus pasangan ini?")) {
+  if (confirm("Yakin ingin menghapus pasangan ini?")) {
     fetch(API_URL, {
       method: "POST",
       body: JSON.stringify({ action: "delete_pasangan", id: id })
