@@ -15,7 +15,6 @@ header {
   color: white;
   text-align: center;
   padding: 24px;
-  position: relative;
 }
 
 header h1 {
@@ -162,8 +161,30 @@ header h1 {
   margin-top: 10px;
 }
 
-.btn-submit:hover {
-  background: #1d4ed8;
+.btn-action-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-edit {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 .spouse-section {
@@ -172,6 +193,20 @@ header h1 {
   padding: 12px;
   margin-top: 12px;
   border-radius: 0 8px 8px 0;
+  position: relative;
+}
+
+.spouse-delete {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .loading {
