@@ -1,158 +1,94 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Silsilah Keluarga - Pohon Keturunan</title>
-  <!-- Link ke file CSS eksternal -->
-  <link rel="stylesheet" href="style.css" />
-  <!-- FontAwesome & Google Fonts -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pohon Silsilah Keluarga</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- Header -->
   <header>
-    <div class="logo">
-      <i class="fa-solid fa-sitemap"></i>
-      <span>Silsilah Keluarga</span>
-    </div>
-    <div class="nav-actions">
-      <button class="btn btn-outline" id="btnAdmin" onclick="toggleAdminModal()">
-        <i class="fa-solid fa-user-shield"></i> <span id="adminBtnText">Login Admin</span>
-      </button>
-      <button class="btn btn-primary" onclick="openAddModal()">
-        <i class="fa-solid fa-user-plus"></i> Tambah Anggota
-      </button>
-    </div>
+    <h1>Pohon Silsilah Keluarga</h1>
+    <p>Garis Keturunan Asli</p>
+    <button class="btn-add" onclick="openAddModal()">+ Tambah Anggota</button>
   </header>
 
-  <!-- Hero Section -->
-  <div class="hero">
-    <h1>Bagan Silsilah & Keturunan</h1>
-    <p>Bagan visual di bawah ini hanya menampilkan **keturunan garis keturunan asli**. Klik pada kartu untuk melihat rincian riwayat, nomor HP, pasangan (1, 2, dst), serta anak dan cucunya.</p>
-  </div>
-
-  <!-- Tree Container -->
-  <div class="tree-wrapper">
-    <div class="tree" id="familyTree">
-      <!-- Pohon Silsilah akan dirender secara dinamis oleh JavaScript -->
-    </div>
-  </div>
+  <main class="tree-container" id="treeContainer">
+    <div class="loading">Memuat data silsilah...</div>
+  </main>
 
   <!-- Modal Detail Anggota -->
-  <div class="modal-overlay" id="detailModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="detailName">Detail Anggota</h3>
-        <button class="close-btn" onclick="closeModal('detailModal')">&times;</button>
-      </div>
-      <div class="modal-body" id="detailBody">
-        <!-- Rincian detail dirender via JS -->
-      </div>
-      <div class="modal-footer" id="detailFooter">
-        <button class="btn btn-outline" onclick="closeModal('detailModal')">Tutup</button>
-      </div>
+  <div class="modal" id="detailModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('detailModal')">&times;</span>
+      <div id="modalBody"></div>
     </div>
   </div>
 
-  <!-- Modal Tambah/Edit Data -->
-  <div class="modal-overlay" id="formModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="formTitle">Tambah Anggota Keluarga</h3>
-        <button class="close-btn" onclick="closeModal('formModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="memberForm" onsubmit="saveMember(event)">
-          <input type="hidden" id="memberId" />
-
-          <div class="form-group">
-            <label>Nama Lengkap (Keturunan Asli) *</label>
-            <input type="text" id="fieldName" required placeholder="Contoh: Budi Santoso" />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Jenis Kelamin *</label>
-              <select id="fieldGender" required>
-                <option value="L">Laki-laki</option>
-                <option value="P">Perempuan</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Orang Tua Keturunan Asli</label>
-              <select id="fieldParent">
-                <option value="">-- Orang Tua Akar / Utama --</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Nomor HP / WhatsApp</label>
-              <input type="text" id="fieldPhone" placeholder="08123456789" />
-            </div>
-            <div class="form-group">
-            <label>Foto Anggota</label>
-            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" style="padding: 4px;" />
-            <input type="hidden" id="fieldPhoto" />
-            <div id="photoPreviewContainer" style="margin-top: 8px; display: none;">
-              <img id="photoPreview" src="" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);" />
-            </div>
-            <small style="color:#666; font-size:11px; display:block; margin-top:2px;">Opsional: Pilih file foto (maks. 2MB). Foto akan dikompresi otomatis agar cepat disimpan.</small>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Biografi Singkat</label>
-            <textarea id="fieldBio" placeholder="Tuliskan biografi singkat..."></textarea>
-          </div>
-
-          <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);" />
-
-          <div class="form-group">
-            <label style="font-weight:700; color:var(--primary);">Data Pasangan (Istri / Suami)</label>
-            <div id="spousesContainer"></div>
-            <button type="button" class="btn btn-outline" style="margin-top:10px; width:100%;" onclick="addSpouseField()">
-              <i class="fa-solid fa-plus"></i> Tambah Pasangan Baru
-            </button>
-          </div>
-
-          <div class="modal-footer" style="padding-right:0; padding-left:0; padding-bottom:0;">
-            <button type="button" class="btn btn-outline" onclick="closeModal('formModal')">Batal</button>
-            <button type="submit" class="btn btn-primary">Simpan Data</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Admin Login -->
-  <div class="modal-overlay" id="adminModal">
-    <div class="modal" style="max-width: 380px;">
-      <div class="modal-header">
-        <h3>Login Admin</h3>
-        <button class="close-btn" onclick="closeModal('adminModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-          Masukkan PIN/Password Admin untuk membuka akses Edit dan Hapus data.
-        </p>
+  <!-- Modal Tambah Anggota Baru -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('addModal')">&times;</span>
+      <h2>Tambah Anggota Keluarga Baru</h2>
+      <form id="addForm" onsubmit="submitForm(event)">
         <div class="form-group">
-          <label>PIN Admin</label>
-          <input type="password" id="adminPin" placeholder="Default PIN: 1234" />
+          <label>Nama Lengkap*</label>
+          <input type="text" id="nama_lengkap" required>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('adminModal')">Batal</button>
-        <button class="btn btn-primary" onclick="loginAdmin()">Login</button>
-      </div>
+        
+        <div class="form-group">
+          <label>Jenis Kelamin*</label>
+          <select id="jenis_kelamin" required>
+            <option value="L">Laki-laki</option>
+            <option value="P">Perempuan</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Orang Tua (Garis Keturunan)*</label>
+          <select id="id_orang_tua" onchange="updatePasanganParentOptions()">
+            <option value="">-- Akar / Anggota Pertama --</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="pasanganParentGroup" style="display:none;">
+          <label>Anak Dari Pasangan Orang Tua Ke-</label>
+          <select id="id_pasangan_orang_tua">
+            <option value="">-- Pilih Pasangan Orang Tua --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Urutan Anak Ke-*</label>
+          <input type="number" id="urutan_anak" min="1" value="1" required>
+        </div>
+
+        <div class="form-group">
+          <label>Tanggal Lahir</label>
+          <input type="date" id="tanggal_lahir">
+        </div>
+
+        <div class="form-group">
+          <label>Bio / Catatan</label>
+          <textarea id="bio" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Foto Profil</label>
+          <input type="file" id="foto_file" accept="image/*">
+        </div>
+
+        <div class="form-group">
+          <label>Nama Pasangan (Opsional)</label>
+          <input type="text" id="nama_pasangan" placeholder="Nama Suami/Istri">
+        </div>
+
+        <button type="submit" class="btn-submit" id="btnSubmit">Simpan Data</button>
+      </form>
     </div>
   </div>
 
-  <!-- JavaScript Eksternal -->
-  <script src="script.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
