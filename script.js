@@ -1,4 +1,4 @@
-const API_URL = ''; // Isi URL Web App Apps Script jika frontend di-host di luar Apps Script.
+const API_URL = 'https://script.google.com/macros/s/AKfycbzDZ5E0T1WOujvSzzce5QOWH3qR8zlJ-0g8SxxsguNyFuEZUQxbheUFJTgq6ynY6Ggx/exec'; // Isi URL Web App Apps Script jika frontend di-host di luar Apps Script.
 let state = {members:[]};
 
 document.addEventListener('DOMContentLoaded',()=>{
