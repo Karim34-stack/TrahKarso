@@ -1,0 +1,23 @@
+/* Custom Styling */
+.card-member {
+    transition: transform 0.2s, shadow 0.2s;
+}
+
+.card-member:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Garis penghubung visual sederhana */
+.generation-group {
+    position: relative;
+}
+
+.generation-group:not(:last-child)::after {
+    content: '';
+    display: block;
+    width: 2px;
+    height: 24px;
+    background-color: #cbd5e1;
+    margin: 12px auto 0 auto;
+}
