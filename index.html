@@ -12,9 +12,11 @@
     <!-- Header -->
     <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-40">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl md:text-2xl font-bold">🌳 Silsilah Keluarga</h1>
-            <button onclick="openModalForAdd()" class="bg-amber-400 hover:bg-amber-500 text-indigo-900 font-semibold px-4 py-2 rounded-lg shadow transition">
-                + Tambah Anggota
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span>🌳</span> Silsilah Keluarga
+            </h1>
+            <button onclick="openModalForAdd()" class="bg-amber-400 hover:bg-amber-500 text-indigo-950 font-semibold px-4 py-2 rounded-lg shadow transition text-sm">
+                + Tambah Anggota Utama
             </button>
         </div>
     </header>
@@ -27,7 +29,7 @@
         </div>
 
         <div id="tree-container" class="space-y-8 hidden">
-            <!-- Render Silsilah -->
+            <!-- Render Pohon Silsilah -->
         </div>
     </main>
 
@@ -38,6 +40,7 @@
             
             <form id="family-form" onsubmit="handleSubmit(event)">
                 <input type="hidden" id="member-id">
+                <input type="hidden" id="isPasangan" value="false">
                 
                 <div class="space-y-4">
                     <div>
@@ -59,10 +62,25 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Pilih Ayah (Opsional)</label>
-                        <select id="ayahId" class="w-full border rounded-lg p-2">
-                            <option value="">-- Tidak Ada --</option>
+                    <div id="orangtua-container" class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Pilih Ayah (Opsional)</label>
+                            <select id="ayahId" class="w-full border rounded-lg p-2">
+                                <option value="">-- Tidak Ada --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Pilih Ibu (Opsional)</label>
+                            <select id="ibuId" class="w-full border rounded-lg p-2">
+                                <option value="">-- Tidak Ada --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="pasangan-field-container" class="hidden">
+                        <label class="block text-sm font-medium mb-1">Pasangan Dari</label>
+                        <select id="pasanganId" class="w-full border rounded-lg p-2 bg-slate-100" disabled>
+                            <option value="">-- Pilih Anggota Utama --</option>
                         </select>
                     </div>
 
