@@ -1,45 +1,85 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <base target="_top">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Silsilah Keluarga</title>
-  <?!= include('style'); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silsilah Keluarga</title>
+    <!-- Tailwind CSS untuk Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<header class="topbar">
-  <div>
-    <h1>🌳 Silsilah Keluarga</h1>
-    <p>Pohon keturunan asli keluarga</p>
-  </div>
+<body class="bg-slate-100 min-h-screen text-slate-800">
 
-  <div class="toolbar">
-    <input id="search" type="search" placeholder="Cari nama...">
-    <select id="generation">
-      <option value="">Semua generasi</option>
-    </select>
-    <select id="limit">
-      <option value="0">Semua anggota</option>
-      <option value="20">20 anggota</option>
-      <option value="50">50 anggota</option>
-      <option value="100">100 anggota</option>
-    </select>
-  </div>
-</header>
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">🌳 Silsilah Keluarga</h1>
+            <button onclick="toggleModal(true)" class="bg-amber-400 hover:bg-amber-500 text-indigo-900 font-semibold px-4 py-2 rounded-lg shadow transition">
+                + Tambah Anggota
+            </button>
+        </div>
+    </header>
 
-<main>
-  <div id="status">Memuat data...</div>
-  <div id="tree" class="tree"></div>
-</main>
+    <!-- Main Container -->
+    <main class="container mx-auto p-4 md:p-6">
+        <!-- Status Indicator -->
+        <div id="loading" class="text-center py-8">
+            <p class="text-gray-500 text-lg">Memuat data dari Google Sheets...</p>
+        </div>
 
-<div id="modal" class="modal hidden">
-  <div class="modal-card">
-    <button id="closeModal" class="close">×</button>
-    <div id="detail"></div>
-  </div>
-</div>
+        <!-- Tree / Grid View -->
+        <div id="tree-container" class="space-y-8 hidden">
+            <!-- Render Data via JS -->
+        </div>
+    </main>
 
-<?!= include('script'); ?>
+    <!-- Modal Form Tambah Anggota -->
+    <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+            <h2 class="text-xl font-bold mb-4">Tambah Anggota Keluarga</h2>
+            
+            <form id="family-form" onsubmit="handleSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nama Lengkap</label>
+                        <input type="text" id="nama" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Jenis Kelamin</label>
+                            <select id="gender" class="w-full border rounded-lg p-2">
+                                <option value="L">Laki-Laki</option>
+                                <option value="P">Perempuan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Generasi Ke-</label>
+                            <input type="number" id="generasi" min="1" value="1" required class="w-full border rounded-lg p-2">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Pilih Ayah (Opsional)</label>
+                        <select id="ayahId" class="w-full border rounded-lg p-2">
+                            <option value="">-- Tidak Ada / Orang Tua Utama --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Catatan / Bio</label>
+                        <textarea id="catatan" rows="2" class="w-full border rounded-lg p-2"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" onclick="toggleModal(false)" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Batal</button>
+                    <button type="submit" id="submit-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
